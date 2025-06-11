@@ -1,117 +1,130 @@
 # Web3.0 区块链系统
 
-这是一个使用 Golang 实现的 Web3.0 区块链系统，包括区块链核心和可视化的 Web 前端。
+一个基于Go语言开发的基础区块链系统，带有Web前端界面。本项目实现了区块链的核心功能，包括区块生成、工作量证明、交易处理和钱包管理。同时提供了RESTful API和前端界面，方便用户交互和数据监控。
 
-## 项目特性
-
-- 使用 Go 语言开发的区块链核心
-- 支持账户管理、交易处理、区块生成与同步
-- 实现了基本的共识机制（PoW）
-- 提供可视化的 Web 前端，包括区块链浏览器和简易钱包功能
-- 实时展示区块链状态、交易信息
-- 响应式设计，支持桌面和移动设备
-
-## 技术栈
-
-### 后端
-
-- Golang
-- Gin Web 框架
-- BadgerDB (存储区块链数据)
-- WebSocket (实时数据推送)
-
-### 前端
-
-- React
-- Material UI / Ant Design
-- Axios (HTTP 请求)
-- Recharts (数据可视化)
-- React Router (路由管理)
-- ethers.js / web3.js (区块链交互)
-
-## 目录结构
+## 项目结构
 
 ```
 web3-blockchain/
-├── cmd/                   # 应用程序入口点
-│   ├── blockchain/        # 区块链节点入口
-│   └── api/               # API 服务入口
-├── internal/              # 内部包
-│   ├── blockchain/        # 区块链核心实现
-│   └── api/               # API 服务实现
-├── pkg/                   # 公共包
-│   ├── utils/             # 通用工具函数
-│   └── models/            # 数据模型
-├── ui/                    # 前端界面
-│   ├── src/               # 源代码
-│   │   ├── components/    # React组件
-│   │   ├── pages/         # 页面组件
-│   │   ├── hooks/         # 自定义React钩子
-│   │   ├── context/       # React上下文
-│   │   ├── utils/         # 工具函数
-│   │   └── services/      # API服务调用
-│   └── public/            # 静态资源
-└── docs/                  # 文档
+├── cmd/                  # 命令行入口
+│   ├── blockchain/       # 区块链节点CLI
+│   └── api/              # API服务
+├── pkg/                  # 核心包
+│   └── models/           # 数据模型
+│       ├── block.go      # 区块结构
+│       ├── blockchain.go # 区块链
+│       ├── proof_of_work.go # 工作量证明
+│       ├── transaction.go # 交易
+│       └── wallet.go     # 钱包
+├── ui/                   # 前端界面
+│   └── src/              # React源代码
+└── docs/                 # API文档
+    └── swagger.json      # Swagger文档
 ```
 
-## 安装与运行
+## 功能特性
 
-### 前提条件
+- **区块链核心功能**
+  - 基于工作量证明(PoW)的共识机制
+  - UTXO交易模型
+  - 多钱包管理
+  - 数据持久化存储
 
-- Go 1.16+
+- **API服务**
+  - RESTful API接口
+  - Swagger API文档
+  - 区块链浏览功能
+  - 交易创建和查询
+
+- **Web前端**
+  - 区块链数据可视化
+  - 区块和交易浏览器
+  - 钱包管理界面
+  - 发送交易功能
+
+## 环境要求
+
+- Go 1.18+
 - Node.js 14+
-- npm 或 yarn
+- BadgerDB (自动安装)
 
-### 安装步骤
+## 安装步骤
 
-1. 克隆仓库
+### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/LuckyLeaolly/web3-blockchain.git
+git clone https://github.com/yourname/web3-blockchain.git
 cd web3-blockchain
 ```
 
-2. 安装后端依赖
+### 2. 安装Go依赖
 
 ```bash
 go mod tidy
 ```
 
-3. 安装前端依赖
+### 3. 安装前端依赖
 
 ```bash
 cd ui
-npm install # 或者使用 yarn install
+npm install
 ```
 
-4. 运行区块链节点
+## 使用说明
+
+### 运行区块链节点
 
 ```bash
-go run cmd/blockchain/main.go
+cd cmd/blockchain
+go run main.go
 ```
 
-5. 运行 API 服务
+常用命令:
+- `go run main.go createblockchain -address ADDRESS` - 创建一个新的区块链
+- `go run main.go createwallet` - 创建一个新的钱包
+- `go run main.go getbalance -address ADDRESS` - 获取地址余额
+- `go run main.go send -from FROM -to TO -amount AMOUNT` - 发送代币
+- `go run main.go printchain` - 打印区块链内容
+
+### 运行API服务
 
 ```bash
-go run cmd/api/main.go
+cd cmd/api
+go run main.go
 ```
 
-6. 运行前端界面
+API服务将在 http://localhost:8080 上启动，Swagger文档可通过 http://localhost:8080/swagger/index.html 访问。
+
+### 运行前端界面
 
 ```bash
 cd ui
-npm start # 或者使用 yarn start
+npm start
 ```
 
-7. 打开浏览器访问 http://localhost:3000
+前端界面将在 http://localhost:3000 上启动。
 
-## API 文档
+## 技术栈
 
-API 文档使用 Swagger 生成，访问 http://localhost:8080/swagger/index.html
+- **后端**: Go, BadgerDB
+- **API框架**: Gin
+- **文档**: Swagger
+- **前端**: React, Ant Design
 
-## 贡献
+## 未来计划
 
-欢迎提交 Pull Request 或创建 Issue。
+- 实现更高效的共识机制(PoS)
+- 添加智能合约功能
+- 扩展P2P网络功能
+- 优化区块同步机制
+
+## 贡献指南
+
+1. Fork项目
+2. 创建特性分支: `git checkout -b feature/new-feature`
+3. 提交更改: `git commit -am 'Add new feature'`
+4. 推送到分支: `git push origin feature/new-feature`
+5. 提交Pull Request
 
 ## 许可证
 

@@ -205,9 +205,202 @@
         ],
         "summary": "创建新交易"
       }
+    },
+    "/transactions/{id}": {
+      "get": {
+        "description": "通过交易ID获取交易详情",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "交易ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/main.TransactionOutput"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": [
+          "交易"
+        ],
+        "summary": "获取特定交易"
+      }
+    },
+    "/wallets": {
+      "get": {
+        "description": "获取所有钱包地址列表",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": [
+          "钱包"
+        ],
+        "summary": "获取所有钱包"
+      },
+      "post": {
+        "description": "创建一个新钱包",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/main.WalletResponse"
+            }
+          }
+        },
+        "tags": [
+          "钱包"
+        ],
+        "summary": "创建新钱包"
+      }
+    },
+    "/wallets/{address}/balance": {
+      "get": {
+        "description": "获取指定钱包地址的余额",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "钱包地址",
+            "name": "address",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/main.BalanceResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": [
+          "钱包"
+        ],
+        "summary": "获取钱包余额"
+      }
+    },
+    "/wallets/{address}/transactions": {
+      "get": {
+        "description": "获取指定钱包地址的所有交易历史",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "钱包地址",
+            "name": "address",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "description": "限制返回的交易数量",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "跳过前面的交易数量",
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/main.TransactionOutput"
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": [
+          "钱包"
+        ],
+        "summary": "获取钱包交易历史"
+      }
     }
   },
   "definitions": {
+    "main.BalanceResponse": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "type": "integer"
+        }
+      }
+    },
     "main.BlockResponse": {
       "type": "object",
       "properties": {
@@ -276,6 +469,17 @@
           "type": "string"
         },
         "to": {
+          "type": "string"
+        }
+      }
+    },
+    "main.WalletResponse": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "publicKey": {
           "type": "string"
         }
       }

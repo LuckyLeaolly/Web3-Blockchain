@@ -1,0 +1,53 @@
+.logo {
+  float: left;
+  width: 120px;
+  height: 31px;
+  margin: 16px 24px 16px 0;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.site-layout-content {
+  min-height: 280px;
+  padding: 24px;
+  background: #fff;
+}
+
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-header {
+  display: flex;
+  align-items: center;
+}
+
+.ant-card {
+  margin-bottom: 16px;
+}
+
+.block-card {
+  border-left: 4px solid #1A73E8;
+}
+
+.transaction-card {
+  border-left: 4px solid #34A853;
+}
+
+.dashboard-stats {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.dashboard-stat-card {
+  flex: 1;
+  margin: 8px;
+  min-width: 200px;
+}
+
+.wallet-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+} 

@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/gob"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/big"
 	"os"
@@ -160,7 +159,7 @@ func (ws *Wallets) LoadFromFile() error {
 		return err
 	}
 
-	fileContent, err := ioutil.ReadFile(walletFile)
+	fileContent, err := os.ReadFile(walletFile)
 	if err != nil {
 		return err
 	}
@@ -190,7 +189,7 @@ func (ws *Wallets) Save() {
 		log.Panic(err)
 	}
 
-	err = ioutil.WriteFile(walletFile, content.Bytes(), 0644)
+	err = os.WriteFile(walletFile, content.Bytes(), 0644)
 	if err != nil {
 		log.Panic(err)
 	}
