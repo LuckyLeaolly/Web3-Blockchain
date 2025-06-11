@@ -1,0 +1,30 @@
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+badger 2025/06/11 14:17:28 INFO: All 1 tables opened in 0s
+badger 2025/06/11 14:17:28 INFO: Discard stats nextEmptySlot: 0
+badger 2025/06/11 14:17:28 INFO: Set nextTxnTs to 1
+badger 2025/06/11 14:17:28 INFO: Deleting empty file: /Users/leaollylucky/GolandProjects/src/personal/web3-blockchain/data/blockchain/000002.vlog
+[GIN-debug] POST   /api/v1/auth/login        --> main.(*BlockchainServer).login-fm (4 handlers)
+[GIN-debug] POST   /api/v1/auth/register     --> main.(*BlockchainServer).register-fm (4 handlers)
+[GIN-debug] GET    /api/v1/info              --> main.(*BlockchainServer).getBlockchainInfo-fm (4 handlers)
+[GIN-debug] GET    /api/v1/blocks            --> main.(*BlockchainServer).getBlocks-fm (4 handlers)
+[GIN-debug] GET    /api/v1/blocks/:hash      --> main.(*BlockchainServer).getBlock-fm (4 handlers)
+[GIN-debug] GET    /api/v1/blocks/height/:height --> main.(*BlockchainServer).getBlockByHeight-fm (4 handlers)
+[GIN-debug] GET    /api/v1/transactions      --> main.(*BlockchainServer).getTransactions-fm (4 handlers)
+[GIN-debug] GET    /api/v1/transactions/:id  --> main.(*BlockchainServer).getTransaction-fm (4 handlers)
+[GIN-debug] GET    /api/v1/wallets/:address/balance --> main.(*BlockchainServer).getBalance-fm (4 handlers)
+[GIN-debug] GET    /api/v1/wallets/:address/transactions --> main.(*BlockchainServer).getWalletTransactions-fm (4 handlers)
+[GIN-debug] POST   /api/v1/transactions      --> main.(*BlockchainServer).createTransaction-fm (5 handlers)
+[GIN-debug] GET    /api/v1/wallets           --> main.(*BlockchainServer).getWallets-fm (5 handlers)
+[GIN-debug] POST   /api/v1/wallets           --> main.(*BlockchainServer).createWallet-fm (5 handlers)
+[GIN-debug] GET    /api/v1/network/config    --> main.(*BlockchainServer).getNetworkConfig-fm (5 handlers)
+[GIN-debug] PUT    /api/v1/network/config    --> main.(*BlockchainServer).updateNetworkConfig-fm (5 handlers)
+[GIN-debug] GET    /swagger/*any             --> main.main.func1 (4 handlers)
+2025/06/11 14:17:28 API服务已启动，监听端口8080...
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8080

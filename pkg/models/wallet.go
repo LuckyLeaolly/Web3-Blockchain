@@ -12,12 +12,16 @@ import (
 	"math/big"
 	"os"
 
+	"personal/web3-blockchain/pkg/common"
+
 	"golang.org/x/crypto/ripemd160"
 )
 
 const version = byte(0x00)
 const addressChecksumLen = 4
-const walletFile = "wallet.dat"
+
+// 使用common包获取钱包文件路径
+var walletFile = common.GetWalletFilePath()
 
 // Wallet 表示一个钱包
 type Wallet struct {
@@ -25,9 +29,33 @@ type Wallet struct {
 	PublicKey  []byte
 }
 
+// 可序列化的钱包结构
+type serializableWallet struct {
+	D         []byte // 私钥D值
+	X         []byte // 公钥X值
+	Y         []byte // 公钥Y值
+	PublicKey []byte
+}
+
 // Wallets 管理多个钱包
 type Wallets struct {
 	Wallets map[string]*Wallet
+}
+
+// 可序列化的钱包集合
+type serializableWallets struct {
+	Wallets map[string]*serializableWallet
+}
+
+// 确保钱包目录存在
+func init() {
+	dir := common.RootDataDir + "/wallets"
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0755)
+		if err != nil {
+			log.Printf("创建钱包目录失败: %v", err)
+		}
+	}
 }
 
 // NewWallet 创建一个新钱包
@@ -61,6 +89,31 @@ func (w *Wallet) GetAddress() []byte {
 	address := Base58Encode(fullPayload)
 
 	return address
+}
+
+// 将Wallet转换为可序列化格式
+func (w *Wallet) toSerializable() *serializableWallet {
+	return &serializableWallet{
+		D:         w.PrivateKey.D.Bytes(),
+		X:         w.PrivateKey.PublicKey.X.Bytes(),
+		Y:         w.PrivateKey.PublicKey.Y.Bytes(),
+		PublicKey: w.PublicKey,
+	}
+}
+
+// 从可序列化格式恢复Wallet
+func walletFromSerializable(s *serializableWallet) *Wallet {
+	curve := elliptic.P256()
+	priv := new(ecdsa.PrivateKey)
+	priv.PublicKey.Curve = curve
+	priv.D = new(big.Int).SetBytes(s.D)
+	priv.PublicKey.X = new(big.Int).SetBytes(s.X)
+	priv.PublicKey.Y = new(big.Int).SetBytes(s.Y)
+
+	return &Wallet{
+		PrivateKey: *priv,
+		PublicKey:  s.PublicKey,
+	}
 }
 
 // HashPubKey 对公钥进行哈希，先用SHA-256然后用RIPEMD-160
@@ -164,35 +217,59 @@ func (ws *Wallets) LoadFromFile() error {
 		return err
 	}
 
-	var wallets Wallets
-	gob.Register(elliptic.P256())
+	var sWallets serializableWallets
 	decoder := gob.NewDecoder(bytes.NewReader(fileContent))
-	err = decoder.Decode(&wallets)
+	err = decoder.Decode(&sWallets)
 	if err != nil {
 		return err
 	}
 
-	ws.Wallets = wallets.Wallets
+	// 转换回标准格式
+	wallets := make(map[string]*Wallet)
+	for addr, sWallet := range sWallets.Wallets {
+		wallets[addr] = walletFromSerializable(sWallet)
+	}
+
+	ws.Wallets = wallets
 
 	return nil
 }
 
 // Save 保存钱包到文件
 func (ws *Wallets) Save() {
+	// 转换为可序列化格式
+	sWallets := serializableWallets{
+		Wallets: make(map[string]*serializableWallet),
+	}
+
+	for addr, wallet := range ws.Wallets {
+		sWallets.Wallets[addr] = wallet.toSerializable()
+	}
+
 	var content bytes.Buffer
-
-	gob.Register(elliptic.P256())
-
 	encoder := gob.NewEncoder(&content)
-	err := encoder.Encode(ws)
+	err := encoder.Encode(sWallets)
 	if err != nil {
+		log.Printf("编码钱包数据时出错: %v", err)
 		log.Panic(err)
 	}
 
-	err = os.WriteFile(walletFile, content.Bytes(), 0644)
+	// 创建临时文件
+	tmpFile := walletFile + ".tmp"
+	err = os.WriteFile(tmpFile, content.Bytes(), 0644)
 	if err != nil {
+		log.Printf("写入钱包临时文件时出错: %v", err)
 		log.Panic(err)
 	}
+
+	// 安全地重命名文件，保证原子性操作
+	err = os.Rename(tmpFile, walletFile)
+	if err != nil {
+		log.Printf("重命名钱包文件时出错: %v", err)
+		log.Panic(err)
+	}
+
+	log.Printf("钱包数据已成功保存到 %s", walletFile)
 }
 
 // Base58Encode 进行Base58编码

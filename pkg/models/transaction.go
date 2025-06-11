@@ -44,7 +44,7 @@ func NewTXOutput(value int, address string) *TXOutput {
 
 // Lock 将地址锁定到输出
 func (out *TXOutput) Lock(address []byte) {
-	pubKeyHash := address // 简化版本，实际应从地址提取公钥哈希
+	pubKeyHash := GetPubKeyHashFromAddress(string(address))
 	out.PubKeyHash = pubKeyHash
 }
 

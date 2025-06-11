@@ -80,23 +80,33 @@ func main() {
 	// API路由组
 	api := r.Group("/api/v1")
 	{
-		// 获取区块链信息
-		api.GET("/info", server.getBlockchainInfo)
+		// 认证相关API - 不需要认证
+		auth := api.Group("/auth")
+		{
+			auth.POST("/login", server.login)
+			auth.POST("/register", server.register)
+		}
 
-		// 区块相关API
+		// 公开API - 不需要认证
+		api.GET("/info", server.getBlockchainInfo)
 		api.GET("/blocks", server.getBlocks)
 		api.GET("/blocks/:hash", server.getBlock)
 		api.GET("/blocks/height/:height", server.getBlockByHeight)
-
-		// 交易相关API
 		api.GET("/transactions", server.getTransactions)
 		api.GET("/transactions/:id", server.getTransaction)
-		api.POST("/transactions", server.createTransaction)
-
-		// 钱包相关API
-		api.GET("/wallets", server.getWallets)
-		api.POST("/wallets", server.createWallet)
 		api.GET("/wallets/:address/balance", server.getBalance)
+		api.GET("/wallets/:address/transactions", server.getWalletTransactions)
+
+		// 需要认证的API
+		protected := api.Group("")
+		protected.Use(JWTAuthMiddleware())
+		{
+			protected.POST("/transactions", server.createTransaction)
+			protected.GET("/wallets", server.getWallets)
+			protected.POST("/wallets", server.createWallet)
+			protected.GET("/network/config", server.getNetworkConfig)
+			protected.PUT("/network/config", server.updateNetworkConfig)
+		}
 	}
 
 	// 自定义Swagger路由
@@ -243,13 +253,44 @@ func (s *BlockchainServer) getBlock(c *gin.Context) {
 // @Failure 404 {object} map[string]string
 // @Router /blocks/height/{height} [get]
 func (s *BlockchainServer) getBlockByHeight(c *gin.Context) {
-	// height := c.Param("height")
+	heightStr := c.Param("height")
+	var height int
 
-	// 暂时不处理height变量，避免未使用变量的警告
-	c.Param("height") // 使用Param但不赋值给变量
+	// 解析高度参数
+	if _, err := fmt.Sscanf(heightStr, "%d", &height); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的区块高度"})
+		return
+	}
 
-	// 这里简化实现，实际应该通过高度快速查找区块
-	c.JSON(http.StatusNotFound, gin.H{"error": "功能尚未实现"})
+	// 遍历区块链查找指定高度的区块
+	iter := s.blockchain.Iterator()
+	var foundBlock *models.Block
+
+	for {
+		block := iter.Next()
+
+		if block.Height == height {
+			foundBlock = block
+			break
+		}
+
+		// 如果当前区块高度低于目标高度，表示没有找到
+		if block.Height < height {
+			break
+		}
+
+		// 到达创世区块，退出循环
+		if len(block.PrevBlockHash) == 0 {
+			break
+		}
+	}
+
+	if foundBlock == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "未找到指定高度的区块"})
+		return
+	}
+
+	c.JSON(http.StatusOK, convertBlockToResponse(foundBlock))
 }
 
 // @Summary 获取所有交易
@@ -515,4 +556,59 @@ func convertTransactionToOutput(tx *models.Transaction, blockTime int64) Transac
 		Timestamp: blockTime,
 		Inputs:    inputs,
 	}
+}
+
+// 钱包交易历史查询
+func (s *BlockchainServer) getWalletTransactions(c *gin.Context) {
+	address := c.Param("address")
+
+	if !models.ValidateAddress(address) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "地址格式错误"})
+		return
+	}
+
+	var transactions []TransactionOutput
+	pubKeyHash := models.GetPubKeyHashFromAddress(address)
+
+	// 遍历区块链
+	iter := s.blockchain.Iterator()
+	for {
+		block := iter.Next()
+
+		for _, tx := range block.Transactions {
+			isRelevant := false
+
+			// 检查是否为发送方
+			if !tx.IsCoinbase() {
+				for _, vin := range tx.Vin {
+					if bytes.Equal(vin.PubKey, pubKeyHash) {
+						isRelevant = true
+						break
+					}
+				}
+			}
+
+			// 检查是否为接收方
+			if !isRelevant {
+				for _, vout := range tx.Vout {
+					if vout.IsLockedWithKey(pubKeyHash) {
+						isRelevant = true
+						break
+					}
+				}
+			}
+
+			// 如果交易与当前地址相关，添加到结果
+			if isRelevant {
+				transactions = append(transactions, convertTransactionToOutput(tx, block.Timestamp))
+			}
+		}
+
+		// 如果到达创世区块，退出循环
+		if len(block.PrevBlockHash) == 0 {
+			break
+		}
+	}
+
+	c.JSON(http.StatusOK, transactions)
 }

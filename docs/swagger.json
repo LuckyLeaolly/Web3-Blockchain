@@ -17,6 +17,101 @@
   "host": "localhost:8080",
   "basePath": "/api/v1",
   "paths": {
+    "/auth/login": {
+      "post": {
+        "description": "用户登录并获取JWT令牌",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "登录信息",
+            "name": "login",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/main.LoginRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/main.TokenResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": [
+          "认证"
+        ],
+        "summary": "用户登录"
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "description": "注册新用户",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "用户注册信息",
+            "name": "user",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/main.RegisterRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/main.UserResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": [
+          "认证"
+        ],
+        "summary": "用户注册"
+      }
+    },
     "/blocks": {
       "get": {
         "description": "返回区块链中的所有区块",
@@ -120,6 +215,89 @@
           "区块链信息"
         ],
         "summary": "获取区块链信息"
+      }
+    },
+    "/network/config": {
+      "get": {
+        "description": "获取区块链网络配置参数",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/main.NetworkConfig"
+            }
+          }
+        },
+        "tags": [
+          "网络"
+        ],
+        "summary": "获取网络配置",
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      },
+      "put": {
+        "description": "更新区块链网络配置参数",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "网络配置参数",
+            "name": "config",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/main.NetworkConfig"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/main.NetworkConfig"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": [
+          "网络"
+        ],
+        "summary": "更新网络配置",
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
       }
     },
     "/transactions": {
@@ -392,6 +570,13 @@
       }
     }
   },
+  "securityDefinitions": {
+    "JWTAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
   "definitions": {
     "main.BalanceResponse": {
       "type": "object",
@@ -483,9 +668,105 @@
           "type": "string"
         }
       }
+    },
+    "main.LoginRequest": {
+      "type": "object",
+      "required": [
+        "password",
+        "username"
+      ],
+      "properties": {
+        "password": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      }
+    },
+    "main.NetworkConfig": {
+      "type": "object",
+      "properties": {
+        "blockTime": {
+          "type": "integer",
+          "description": "区块生成时间间隔(秒)"
+        },
+        "difficulty": {
+          "type": "integer",
+          "description": "挖矿难度"
+        },
+        "miningReward": {
+          "type": "integer",
+          "description": "挖矿奖励"
+        },
+        "txFee": {
+          "type": "integer",
+          "description": "交易费用"
+        }
+      }
+    },
+    "main.RegisterRequest": {
+      "type": "object",
+      "required": [
+        "email",
+        "password",
+        "username"
+      ],
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 6
+        },
+        "username": {
+          "type": "string",
+          "minLength": 3
+        }
+      }
+    },
+    "main.TokenResponse": {
+      "type": "object",
+      "properties": {
+        "expiresAt": {
+          "type": "integer"
+        },
+        "token": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "integer"
+        }
+      }
+    },
+    "main.UserResponse": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "username": {
+          "type": "string"
+        },
+        "walletAddress": {
+          "type": "string"
+        }
+      }
     }
   },
   "tags": [
+    {
+      "description": "用户认证和授权",
+      "name": "认证"
+    },
+    {
+      "description": "网络配置和状态",
+      "name": "网络"
+    },
     {
       "description": "区块链基本信息",
       "name": "区块链信息"

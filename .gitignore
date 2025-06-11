@@ -1,0 +1,12 @@
+node_modules
+.idea
+.vscode
+.pytest_cache
+unpackage
+dist
+uni_modules
+.DS_Store
+*.css.map
+*.map
+*.map.json
+.history

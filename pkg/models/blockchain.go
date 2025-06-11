@@ -9,10 +9,14 @@ import (
 	"log"
 	"os"
 
+	"personal/web3-blockchain/pkg/common"
+
 	"github.com/dgraph-io/badger/v3"
 )
 
-const dbPath = "../data/blockchain"
+// 使用common包获取区块链数据目录
+var dbPath = common.GetBlockchainDir()
+
 const genesisCoinbaseData = "创世区块奖励交易"
 
 // Blockchain 表示一个区块链
@@ -23,11 +27,33 @@ type Blockchain struct {
 
 // DbExists 检查数据库是否已存在
 func DbExists() bool {
+	// 首先检查目录是否存在
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		return false
 	}
 
+	// 然后检查是否有实际的数据文件
+	dataFiles, err := os.ReadDir(dbPath)
+	if err != nil {
+		return false
+	}
+
+	// 如果目录是空的，认为数据库不存在
+	if len(dataFiles) == 0 {
+		return false
+	}
+
 	return true
+}
+
+// 确保数据目录存在
+func init() {
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		err = os.MkdirAll(dbPath, 0755)
+		if err != nil {
+			log.Printf("创建区块链数据目录失败: %v", err)
+		}
+	}
 }
 
 // InitBlockchain 创建一个新的区块链数据库
@@ -219,13 +245,14 @@ func (bc *Blockchain) FindSpendableOutputs(address string, amount int) (int, map
 	unspentOutputs := make(map[string][]int)
 	unspentTXs := bc.FindUnspentTransactions(address)
 	accumulated := 0
+	pubKeyHash := GetPubKeyHashFromAddress(address)
 
 Work:
 	for _, tx := range unspentTXs {
 		txID := hex.EncodeToString(tx.ID)
 
 		for outIdx, out := range tx.Vout {
-			if out.IsLockedWithKey([]byte(address)) && accumulated < amount {
+			if out.IsLockedWithKey(pubKeyHash) && accumulated < amount {
 				accumulated += out.Value
 				unspentOutputs[txID] = append(unspentOutputs[txID], outIdx)
 
@@ -243,6 +270,7 @@ Work:
 func (bc *Blockchain) FindUnspentTransactions(address string) []Transaction {
 	var unspentTXs []Transaction
 	spentTXOs := make(map[string][]int)
+	pubKeyHash := GetPubKeyHashFromAddress(address)
 
 	iter := bc.Iterator()
 
@@ -263,14 +291,14 @@ func (bc *Blockchain) FindUnspentTransactions(address string) []Transaction {
 					}
 				}
 
-				if out.IsLockedWithKey([]byte(address)) {
+				if out.IsLockedWithKey(pubKeyHash) {
 					unspentTXs = append(unspentTXs, *tx)
 				}
 			}
 
 			if !tx.IsCoinbase() {
 				for _, in := range tx.Vin {
-					if bytes.Equal(in.PubKey, []byte(address)) { // 简化版，实际应该比较公钥哈希
+					if bytes.Equal(in.PubKey, pubKeyHash) {
 						inTxID := hex.EncodeToString(in.Txid)
 						spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Vout)
 					}

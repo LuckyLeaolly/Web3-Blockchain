@@ -9,7 +9,12 @@ web3-blockchain/
 ├── cmd/                  # 命令行入口
 │   ├── blockchain/       # 区块链节点CLI
 │   └── api/              # API服务
+│       ├── main.go       # 主程序入口
+│       ├── auth.go       # 认证相关接口
+│       └── network.go    # 网络配置接口
 ├── pkg/                  # 核心包
+│   ├── common/           # 通用工具
+│   │   └── paths.go      # 路径管理
 │   └── models/           # 数据模型
 │       ├── block.go      # 区块结构
 │       ├── blockchain.go # 区块链
@@ -18,6 +23,9 @@ web3-blockchain/
 │       └── wallet.go     # 钱包
 ├── ui/                   # 前端界面
 │   └── src/              # React源代码
+├── data/                 # 数据存储目录 
+│   ├── blockchain/       # 区块链数据
+│   └── wallets/          # 钱包数据
 └── docs/                 # API文档
     └── swagger.json      # Swagger文档
 ```
@@ -28,19 +36,46 @@ web3-blockchain/
   - 基于工作量证明(PoW)的共识机制
   - UTXO交易模型
   - 多钱包管理
-  - 数据持久化存储
+  - 安全的钱包序列化与存储
+  - 数据持久化存储 (BadgerDB)
+  - 安全的交易签名与验证
+  - 统一的数据路径管理
+
+- **认证与安全**
+  - JWT认证系统
+  - API访问控制
+  - 用户登录/注册功能
+  - 受保护资源访问
 
 - **API服务**
-  - RESTful API接口
-  - Swagger API文档
-  - 区块链浏览功能
-  - 交易创建和查询
+  - 完整的RESTful API接口
+  - 详细的Swagger API文档
+  - 区块链信息查询（区块高度、总交易数、网络状态）
+  - 区块相关接口（获取区块列表、按哈希或高度查询区块）
+  - 交易相关接口（创建交易、查询交易详情、获取交易列表）
+  - 钱包管理接口（创建钱包、获取余额、查询钱包地址列表）
+  - 网络配置接口（获取和更新共识参数）
 
 - **Web前端**
-  - 区块链数据可视化
-  - 区块和交易浏览器
-  - 钱包管理界面
-  - 发送交易功能
+  - **仪表盘**：展示区块链关键指标（区块高度、交易总数、运行状态）
+  - **区块浏览器**：
+    - 区块和交易列表展示
+    - 强大的搜索功能（支持区块哈希、交易ID和钱包地址搜索）
+    - 区块与交易的详细信息查看
+  - **钱包管理**：
+    - 创建新钱包
+    - 查看钱包余额
+    - 发送交易功能
+  - **交易历史**：
+    - 按钱包地址查询交易记录
+    - 按日期范围筛选交易
+    - 交易时间线可视化展示
+    - 收入/支出交易区分
+  - **网络配置**：
+    - 查看和修改网络参数
+    - 区块生成时间调整
+    - 难度调整
+    - 挖矿奖励配置
 
 ## 环境要求
 
@@ -72,30 +107,43 @@ npm install
 
 ## 使用说明
 
-### 运行区块链节点
+### 1. 创建钱包
+
+首先，创建一个钱包地址：
 
 ```bash
 cd cmd/blockchain
-go run main.go
+go run main.go createwallet
 ```
 
-常用命令:
-- `go run main.go createblockchain -address ADDRESS` - 创建一个新的区块链
-- `go run main.go createwallet` - 创建一个新的钱包
-- `go run main.go getbalance -address ADDRESS` - 获取地址余额
-- `go run main.go send -from FROM -to TO -amount AMOUNT` - 发送代币
-- `go run main.go printchain` - 打印区块链内容
+系统将生成一个新的钱包地址，记录该地址以便后续使用。
 
-### 运行API服务
+### 2. 初始化区块链
+
+使用刚才创建的钱包地址初始化区块链：
+
+```bash
+go run main.go createblockchain -address YOUR_WALLET_ADDRESS
+```
+
+此命令将创建一个新的区块链数据库，并生成创世区块，该地址将获得初始挖矿奖励。
+
+### 3. 查询钱包余额
+
+```bash
+go run main.go getbalance -address YOUR_WALLET_ADDRESS
+```
+
+### 4. 运行API服务
 
 ```bash
 cd cmd/api
-go run main.go
+go run main.go auth.go network.go
 ```
 
 API服务将在 http://localhost:8080 上启动，Swagger文档可通过 http://localhost:8080/swagger/index.html 访问。
 
-### 运行前端界面
+### 5. 启动前端界面
 
 ```bash
 cd ui
@@ -104,12 +152,55 @@ npm start
 
 前端界面将在 http://localhost:3000 上启动。
 
+### 6. API认证
+
+要访问受保护的API端点，需要先登录获取JWT令牌：
+
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"username":"admin", "password":"admin123"}' \
+  http://localhost:8080/api/v1/auth/login
+```
+
+使用返回的令牌访问受保护的API：
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  http://localhost:8080/api/v1/network/config
+```
+
 ## 技术栈
 
 - **后端**: Go, BadgerDB
 - **API框架**: Gin
+- **认证**: JWT (JSON Web Tokens)
+- **数据库**: BadgerDB (键值存储)
 - **文档**: Swagger
 - **前端**: React, Ant Design
+- **状态管理**: React Hooks
+- **API通信**: Axios
+- **时间处理**: Moment.js
+
+## 系统组件详解
+
+### 区块链核心
+
+- **区块结构**：包含前一区块哈希、时间戳、随机数、交易列表等
+- **工作量证明**：确保区块的生成需要一定的计算工作，防止恶意攻击
+- **钱包管理**：生成ECDSA密钥对，创建基于公钥的地址，安全存储
+- **UTXO模型**：使用未花费交易输出模型处理交易，防止双花
+
+### API服务
+
+- **RESTful设计**：遵循REST原则设计的API接口
+- **认证中间件**：基于JWT的API访问控制
+- **路由管理**：清晰的路由结构，区分公开和需要认证的API
+
+### 数据存储
+
+- **统一路径管理**：通过common包集中管理所有数据存储路径
+- **BadgerDB存储**：高性能的键值对存储，适合区块链数据
+- **序列化优化**：改进对象序列化方法，确保数据一致性
 
 ## 未来计划
 
@@ -117,6 +208,18 @@ npm start
 - 添加智能合约功能
 - 扩展P2P网络功能
 - 优化区块同步机制
+- 添加更丰富的数据可视化图表
+- 实现HD钱包（分层确定性钱包）功能
+- 增强安全性和隐私保护
+
+## 问题排查与解决
+
+如果遇到常见问题，请参考以下解决方案：
+
+1. **钱包创建问题**：如遇"gob: type elliptic.p256Curve has no exported fields"错误，已通过改进序列化方法解决
+2. **数据路径问题**：所有数据路径已统一管理，确保跨平台兼容性
+3. **API认证失败**：检查JWT令牌格式和有效期
+4. **区块链访问错误**：确保BadgerDB数据库文件未损坏，必要时重新初始化区块链
 
 ## 贡献指南
 
