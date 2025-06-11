@@ -1,0 +1,302 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Web3.0 区块链系统 API",
+    "description": "这是一个使用Golang实现的Web3.0区块链系统的API服务",
+    "contact": {
+      "name": "API Support",
+      "url": "http://www.web3blockchain.io/support",
+      "email": "support@web3blockchain.io"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "version": "1.0"
+  },
+  "host": "localhost:8080",
+  "basePath": "/api/v1",
+  "paths": {
+    "/blocks": {
+      "get": {
+        "description": "返回区块链中的所有区块",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "限制返回的区块数量",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "跳过前面的区块数量",
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/main.BlockResponse"
+              }
+            }
+          }
+        },
+        "tags": [
+          "区块"
+        ],
+        "summary": "获取所有区块"
+      }
+    },
+    "/blocks/{hash}": {
+      "get": {
+        "description": "通过区块哈希获取区块详情",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "区块哈希",
+            "name": "hash",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/main.BlockResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": [
+          "区块"
+        ],
+        "summary": "获取特定区块"
+      }
+    },
+    "/info": {
+      "get": {
+        "description": "返回区块链的基本信息，如区块高度、交易总数等",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "tags": [
+          "区块链信息"
+        ],
+        "summary": "获取区块链信息"
+      }
+    },
+    "/transactions": {
+      "get": {
+        "description": "返回区块链中的所有交易",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "type": "integer",
+            "description": "限制返回的交易数量",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "跳过前面的交易数量",
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/main.TransactionOutput"
+              }
+            }
+          }
+        },
+        "tags": [
+          "交易"
+        ],
+        "summary": "获取所有交易"
+      },
+      "post": {
+        "description": "创建一个新交易并广播到区块链网络",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "交易详情",
+            "name": "transaction",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/main.TransactionRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": [
+          "交易"
+        ],
+        "summary": "创建新交易"
+      }
+    }
+  },
+  "definitions": {
+    "main.BlockResponse": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "nonce": {
+          "type": "integer"
+        },
+        "prevBlockHash": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer"
+        },
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/main.TransactionOutput"
+          }
+        }
+      }
+    },
+    "main.TransactionOutput": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "integer"
+        },
+        "from": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timestamp": {
+          "type": "integer"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "main.TransactionRequest": {
+      "type": "object",
+      "required": [
+        "amount",
+        "from",
+        "to"
+      ],
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "区块链基本信息",
+      "name": "区块链信息"
+    },
+    {
+      "description": "区块相关操作",
+      "name": "区块"
+    },
+    {
+      "description": "交易相关操作",
+      "name": "交易"
+    },
+    {
+      "description": "钱包相关操作",
+      "name": "钱包"
+    }
+  ]
+} 
