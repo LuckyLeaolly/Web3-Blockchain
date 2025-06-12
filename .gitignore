@@ -16,3 +16,12 @@ data/blockchain/*.mem
 data/blockchain/LOCK
 data/blockchain/DISCARD
 data/wallets/*.dat
+
+# API数据文件
+cmd/api/data/blockchain/*.vlog
+cmd/api/data/blockchain/*.mem
+cmd/api/data/blockchain/LOCK
+cmd/api/data/blockchain/DISCARD
+cmd/api/data/blockchain/MANIFEST
+cmd/blockchain/data/blockchain/
+cmd/blockchain/data/wallets/

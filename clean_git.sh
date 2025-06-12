@@ -6,7 +6,10 @@ echo "开始清理Git仓库中的大文件..."
 
 # 使用git filter-branch删除大文件
 git filter-branch --force --index-filter \
-  "git rm --cached --ignore-unmatch data/blockchain/00003.mem data/blockchain/000005.vlog" \
+  "git rm --cached --ignore-unmatch \
+   data/blockchain/00003.mem data/blockchain/000005.vlog \
+   cmd/api/data/blockchain/00003.mem cmd/api/data/blockchain/000003.vlog \
+   cmd/blockchain/data/blockchain/* cmd/blockchain/data/wallets/*" \
   --prune-empty --tag-name-filter cat -- --all
 
 # 清理和优化仓库
