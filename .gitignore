@@ -4,9 +4,15 @@ node_modules
 .pytest_cache
 unpackage
 dist
-uni_modules
 .DS_Store
 *.css.map
 *.map
 *.map.json
 .history
+
+# 区块链数据文件
+data/blockchain/*.vlog
+data/blockchain/*.mem
+data/blockchain/LOCK
+data/blockchain/DISCARD
+data/wallets/*.dat
