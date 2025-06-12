@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -43,8 +44,39 @@ type TransactionOutput struct {
 
 // NewBlockchainServer 创建新的区块链服务
 func NewBlockchainServer() *BlockchainServer {
-	bc := models.NewBlockchain()
-	return &BlockchainServer{blockchain: bc}
+	var blockchain *models.Blockchain
+
+	// 检查区块链是否存在，如果不存在则初始化
+	if !models.DbExists() {
+		// 获取钱包
+		wallets, err := models.NewWallets()
+		if err != nil {
+			log.Printf("获取钱包失败: %v", err)
+			// 如果获取钱包失败，创建一个新钱包
+			wallets = &models.Wallets{Wallets: make(map[string]*models.Wallet)}
+		}
+
+		// 如果没有钱包，创建一个
+		var miningAddress string
+		if len(wallets.GetAddresses()) == 0 {
+			miningAddress = wallets.CreateWallet()
+			wallets.Save()
+			log.Printf("创建了新的挖矿钱包: %s", miningAddress)
+		} else {
+			// 使用第一个钱包作为挖矿地址
+			miningAddress = wallets.GetAddresses()[0]
+			log.Printf("使用现有钱包作为挖矿地址: %s", miningAddress)
+		}
+
+		// 初始化区块链
+		blockchain = models.InitBlockchain(miningAddress)
+		log.Printf("区块链已初始化，挖矿地址: %s", miningAddress)
+	} else {
+		// 打开现有区块链
+		blockchain = models.NewBlockchain()
+	}
+
+	return &BlockchainServer{blockchain: blockchain}
 }
 
 // @title Web3.0 区块链系统 API
@@ -94,6 +126,9 @@ func main() {
 		api.GET("/blocks/height/:height", server.getBlockByHeight)
 		api.GET("/transactions", server.getTransactions)
 		api.GET("/transactions/:id", server.getTransaction)
+
+		// 这些接口也应该是公开的，不需要认证
+		api.GET("/wallets", server.getWallets)
 		api.GET("/wallets/:address/balance", server.getBalance)
 		api.GET("/wallets/:address/transactions", server.getWalletTransactions)
 
@@ -102,7 +137,6 @@ func main() {
 		protected.Use(JWTAuthMiddleware())
 		{
 			protected.POST("/transactions", server.createTransaction)
-			protected.GET("/wallets", server.getWallets)
 			protected.POST("/wallets", server.createWallet)
 			protected.GET("/network/config", server.getNetworkConfig)
 			protected.PUT("/network/config", server.updateNetworkConfig)
@@ -416,8 +450,61 @@ func (s *BlockchainServer) createTransaction(c *gin.Context) {
 		return
 	}
 
+	// 检查余额是否足够
+	balance := 0
+	pubKeyHash := models.GetPubKeyHashFromAddress(req.From)
+	UTXOs := s.blockchain.FindUTXO()
+
+	for _, outputs := range UTXOs {
+		for _, out := range outputs {
+			if out.IsLockedWithKey(pubKeyHash) {
+				balance += out.Value
+			}
+		}
+	}
+
+	if balance < req.Amount {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("余额不足，当前余额: %d, 请求金额: %d", balance, req.Amount)})
+		return
+	}
+
+	// 尝试创建交易
+	var tx *models.Transaction
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("创建交易时发生错误: %v", r)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("创建交易失败: %v", r)})
+		}
+	}()
+
+	// 获取钱包
+	wallets, err := models.NewWallets()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("无法加载钱包: %v", err)})
+		return
+	}
+
+	// 检查发送方钱包是否存在
+	wallet, exists := wallets.Wallets[req.From]
+	if !exists {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "发送方钱包不存在"})
+		return
+	}
+
 	// 创建交易
-	tx := models.NewUTXOTransaction(req.From, req.To, req.Amount, s.blockchain)
+	tx = models.NewUTXOTransaction(req.From, req.To, req.Amount, s.blockchain)
+
+	// 对交易进行签名
+	prevTXs := make(map[string]models.Transaction)
+	for _, vin := range tx.Vin {
+		prevTX, err := s.blockchain.FindTransaction(vin.Txid)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("查找交易失败: %v", err)})
+			return
+		}
+		prevTXs[hex.EncodeToString(prevTX.ID)] = prevTX
+	}
+	tx.Sign(wallet.PrivateKey, prevTXs)
 
 	// 挖掘新区块
 	newBlock := s.blockchain.MineBlock([]*models.Transaction{tx})
@@ -523,18 +610,31 @@ func convertTransactionToOutput(tx *models.Transaction, blockTime int64) Transac
 
 	if tx.IsCoinbase() {
 		from = "系统"
-		to = fmt.Sprintf("%s", tx.Vout[0].PubKeyHash)
+		// 将公钥哈希转换为Base58编码的地址格式
+		pubKeyHash := tx.Vout[0].PubKeyHash
+		versionedPayload := append([]byte{0x00}, pubKeyHash...)
+		checksum := models.Checksum(versionedPayload)
+		fullPayload := append(versionedPayload, checksum...)
+		to = string(models.Base58Encode(fullPayload))
 		amount = tx.Vout[0].Value
 	} else {
-		for _, vin := range tx.Vin {
-			from = fmt.Sprintf("%s", vin.PubKey)
-			break
+		// 对于普通交易，从输入的公钥获取地址
+		if len(tx.Vin) > 0 && len(tx.Vin[0].PubKey) > 0 {
+			pubKeyHash := models.HashPubKey(tx.Vin[0].PubKey)
+			versionedPayload := append([]byte{0x00}, pubKeyHash...)
+			checksum := models.Checksum(versionedPayload)
+			fullPayload := append(versionedPayload, checksum...)
+			from = string(models.Base58Encode(fullPayload))
 		}
 
+		// 找到不是找零的输出
 		for _, vout := range tx.Vout {
-			// 跳过找零输出
-			if !bytes.Equal(vout.PubKeyHash, []byte(from)) {
-				to = fmt.Sprintf("%s", vout.PubKeyHash)
+			pubKeyHash := models.HashPubKey(tx.Vin[0].PubKey)
+			if !bytes.Equal(vout.PubKeyHash, pubKeyHash) {
+				versionedPayload := append([]byte{0x00}, vout.PubKeyHash...)
+				checksum := models.Checksum(versionedPayload)
+				fullPayload := append(versionedPayload, checksum...)
+				to = string(models.Base58Encode(fullPayload))
 				amount = vout.Value
 				break
 			}

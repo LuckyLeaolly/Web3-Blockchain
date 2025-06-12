@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Button, Select, Typography, Table, message, Tabs, Spin } from 'antd';
 import { WalletOutlined, SendOutlined, PlusOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import api, { API_URL } from '../api/client';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -17,12 +17,10 @@ const Wallet = () => {
   const [sending, setSending] = useState(false);
   const [transactions, setTransactions] = useState([]);
 
-  const API_URL = 'http://localhost:8080/api/v1';
-
   // 加载钱包地址列表
   const fetchAddresses = async () => {
     try {
-      const response = await axios.get(`${API_URL}/wallets`);
+      const response = await api.wallets.getAll();
       setAddresses(response.data);
       if (response.data.length > 0 && !selectedAddress) {
         setSelectedAddress(response.data[0]);
@@ -41,7 +39,7 @@ const Wallet = () => {
     if (!address) return;
 
     try {
-      const response = await axios.get(`${API_URL}/wallets/${address}/balance`);
+      const response = await api.wallets.getBalance(address);
       setBalance(response.data.balance);
     } catch (error) {
       console.error('获取余额失败:', error);
@@ -64,7 +62,7 @@ const Wallet = () => {
   const handleCreateWallet = async () => {
     setCreating(true);
     try {
-      const response = await axios.post(`${API_URL}/wallets`);
+      const response = await api.wallets.create();
       const newAddress = response.data.address;
       
       message.success(`新钱包创建成功: ${newAddress}`);
@@ -89,7 +87,7 @@ const Wallet = () => {
         amount: parseInt(values.amount),
       };
       
-      const response = await axios.post(`${API_URL}/transactions`, txData);
+      const response = await api.transactions.create(txData);
       
       message.success(`交易已创建: ${response.data.txid}`);
       form.resetFields(['toAddress', 'amount']);

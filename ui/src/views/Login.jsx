@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Card, Tabs, message, Typography } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/client';
 
 const { TabPane } = Tabs;
 const { Title } = Typography;
@@ -12,12 +12,10 @@ const Login = ({ setAuth }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   
-  const API_URL = 'http://localhost:8080/api/v1';
-
   const handleLogin = async (values) => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, values);
+      const response = await api.auth.login(values);
       const { token, userId } = response.data;
       
       // 保存令牌到本地存储
@@ -38,7 +36,7 @@ const Login = ({ setAuth }) => {
   const handleRegister = async (values) => {
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/auth/register`, values);
+      await api.auth.register(values);
       message.success('注册成功，请登录');
       setActiveTab('login');
     } catch (error) {

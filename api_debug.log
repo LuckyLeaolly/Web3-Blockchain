@@ -1,0 +1,20 @@
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+2025/06/12 10:04:55 使用现有钱包作为挖矿地址: 13keCFxEQg2Qs2tJzsRxAnUZpXFT37pSjH
+2025/06/12 10:04:55 Cannot acquire directory lock on "/Users/leaollylucky/GolandProjects/src/personal/web3-blockchain/data/blockchain".  Another process is using this Badger database. error: resource temporarily unavailable
+panic: Cannot acquire directory lock on "/Users/leaollylucky/GolandProjects/src/personal/web3-blockchain/data/blockchain".  Another process is using this Badger database. error: resource temporarily unavailable
+
+goroutine 1 [running]:
+log.Panic({0x140000cf948?, 0x4f?, 0x14000158230?})
+	/opt/homebrew/Cellar/go/1.24.3/libexec/src/log/log.go:432 +0x60
+personal/web3-blockchain/pkg/models.InitBlockchain({0x14000147020, 0x22})
+	/Users/leaollylucky/GolandProjects/src/personal/web3-blockchain/pkg/models/blockchain.go:71 +0x10c
+main.NewBlockchainServer()
+	/Users/leaollylucky/GolandProjects/src/personal/web3-blockchain/cmd/api/main.go:72 +0x38c
+main.main()
+	/Users/leaollylucky/GolandProjects/src/personal/web3-blockchain/cmd/api/main.go:110 +0x1c0
+exit status 2

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Statistic, Table, Typography, Spin } from 'antd';
 import { BlockOutlined, TransactionOutlined, NodeIndexOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import api from '../api/client';
+import { Link } from 'react-router-dom';
 
 const { Title } = Typography;
 
@@ -16,37 +17,27 @@ const Dashboard = () => {
   const [latestBlocks, setLatestBlocks] = useState([]);
   const [latestTransactions, setLatestTransactions] = useState([]);
 
-  const API_URL = 'http://localhost:8080/api/v1';
-
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDashboardData = async () => {
       try {
-        setLoading(true);
+        // 并行请求数据
+        const [infoResponse, blocksResponse, transactionsResponse] = await Promise.all([
+          api.system.getInfo(),
+          api.blocks.getAll(5), // 获取最新的5个区块
+          api.transactions.getAll(5), // 获取最新的5个交易
+        ]);
         
-        // 获取区块链基本信息
-        const infoResponse = await axios.get(`${API_URL}/info`);
         setBlockchainInfo(infoResponse.data);
-        
-        // 获取最新区块
-        const blocksResponse = await axios.get(`${API_URL}/blocks?limit=5`);
         setLatestBlocks(blocksResponse.data);
-        
-        // 获取最新交易
-        const transactionsResponse = await axios.get(`${API_URL}/transactions?limit=5`);
         setLatestTransactions(transactionsResponse.data);
-        
         setLoading(false);
       } catch (error) {
-        console.error('获取数据失败:', error);
+        console.error('获取仪表盘数据失败:', error);
         setLoading(false);
       }
     };
 
-    fetchData();
-
-    // 每30秒刷新一次数据
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    fetchDashboardData();
   }, []);
 
   const blockColumns = [
@@ -105,7 +96,7 @@ const Dashboard = () => {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
         <Spin size="large" />
-        <p>加载数据中...</p>
+        <p>加载仪表盘数据中...</p>
       </div>
     );
   }

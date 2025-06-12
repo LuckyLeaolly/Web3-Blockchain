@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Card, Typography, Spin, message, Timeline, Tag, Select, DatePicker, Button } from 'antd';
 import { ClockCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, SearchOutlined } from '@ant-design/icons';
-import axios from 'axios';
 import moment from 'moment';
+import api from '../api/client'; // 使用API客户端
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -16,12 +16,10 @@ const TransactionHistory = () => {
   const [dateRange, setDateRange] = useState(null);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
 
-  const API_URL = 'http://localhost:8080/api/v1';
-
   // 获取钱包地址列表
   const fetchWalletAddresses = async () => {
     try {
-      const response = await axios.get(`${API_URL}/wallets`);
+      const response = await api.wallets.getAll(); // 使用api客户端方法
       setWalletAddresses(response.data);
       if (response.data.length > 0) {
         setWalletAddress(response.data[0]);
@@ -38,14 +36,41 @@ const TransactionHistory = () => {
 
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/wallets/${address}/transactions`);
-      const sortedTransactions = response.data.sort((a, b) => b.timestamp - a.timestamp);
-      setTransactions(sortedTransactions);
-      setFilteredTransactions(sortedTransactions);
-      setLoading(false);
+      // 使用API客户端以确保带上认证令牌
+      const response = await api.wallets.getTransactions(address);
+      
+      // 如果没有交易记录，则尝试获取所有交易
+      if (!response.data || (Array.isArray(response.data) && response.data.length === 0)) {
+        const allTxResponse = await api.transactions.getAll(50);
+        // 过滤与当前钱包相关的交易
+        const relevantTx = allTxResponse.data.filter(tx => 
+          tx.from === address || tx.to === address
+        );
+        const sortedTransactions = relevantTx.sort((a, b) => b.timestamp - a.timestamp);
+        setTransactions(sortedTransactions);
+        setFilteredTransactions(sortedTransactions);
+      } else {
+        const sortedTransactions = response.data.sort((a, b) => b.timestamp - a.timestamp);
+        setTransactions(sortedTransactions);
+        setFilteredTransactions(sortedTransactions);
+      }
     } catch (error) {
       console.error('获取交易历史失败:', error);
-      message.error('获取交易历史失败');
+      
+      // 尝试获取所有交易作为后备方案
+      try {
+        const allTxResponse = await api.transactions.getAll(50);
+        // 过滤与当前钱包相关的交易
+        const relevantTx = allTxResponse.data.filter(tx => 
+          tx.from === address || tx.to === address
+        );
+        const sortedTransactions = relevantTx.sort((a, b) => b.timestamp - a.timestamp);
+        setTransactions(sortedTransactions);
+        setFilteredTransactions(sortedTransactions);
+      } catch (backupError) {
+        message.error('获取交易历史失败');
+      }
+    } finally {
       setLoading(false);
     }
   };

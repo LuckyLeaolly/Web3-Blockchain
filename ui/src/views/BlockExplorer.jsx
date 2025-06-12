@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, Input, Button, Table, Card, Typography, Collapse, Spin, message } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import { Tabs, Input, Button, Table, Card, Typography, Collapse, Spin, message, Descriptions, Tag, Empty } from 'antd';
+import { SearchOutlined, BlockOutlined, TransactionOutlined, WalletOutlined } from '@ant-design/icons';
+import api from '../api/client';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -11,93 +11,96 @@ const BlockExplorer = () => {
   const [blocks, setBlocks] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResult, setSearchResult] = useState(null);
-  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchPerformed, setSearchPerformed] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = 'http://localhost:8080/api/v1';
-
+  // 加载初始数据
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
       try {
-        setLoading(true);
+        // 并行请求数据
+        const [blocksResponse, transactionsResponse] = await Promise.all([
+          api.blocks.getAll(10),
+          api.transactions.getAll(10)
+        ]);
         
-        // 获取区块列表
-        const blocksResponse = await axios.get(`${API_URL}/blocks?limit=10`);
         setBlocks(blocksResponse.data);
-        
-        // 获取交易列表
-        const transactionsResponse = await axios.get(`${API_URL}/transactions?limit=10`);
         setTransactions(transactionsResponse.data);
-        
         setLoading(false);
       } catch (error) {
         console.error('获取数据失败:', error);
+        message.error('加载区块链数据失败');
         setLoading(false);
-        message.error('加载数据失败，请稍后再试');
       }
     };
 
-    fetchData();
+    fetchInitialData();
   }, []);
 
+  // 处理搜索
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       message.warning('请输入搜索内容');
       return;
     }
 
-    setSearching(true);
-    setSearchResult(null);
+    setSearchLoading(true);
+    setSearchResults(null);
+    setSearchPerformed(true);
 
     try {
-      // 尝试按区块哈希查询
-      if (searchQuery.length >= 32) {
-        try {
-          const blockResponse = await axios.get(`${API_URL}/blocks/${searchQuery}`);
-          setSearchResult({ type: 'block', data: blockResponse.data });
-          setSearching(false);
-          return;
-        } catch (error) {
-          // 如果不是区块，可能是交易
-          if (error.response && error.response.status !== 404) {
-            throw error;
+      // 尝试按区块哈希搜索
+      try {
+        const blockResponse = await api.blocks.getById(searchQuery);
+        setSearchResults({
+          type: 'block',
+          data: blockResponse.data
+        });
+        setSearchLoading(false);
+        return;
+      } catch (e) {
+        // 不是区块，继续尝试其他类型
+      }
+
+      // 尝试按交易ID搜索
+      try {
+        const txResponse = await api.transactions.getById(searchQuery);
+        setSearchResults({
+          type: 'transaction',
+          data: txResponse.data
+        });
+        setSearchLoading(false);
+        return;
+      } catch (e) {
+        // 不是交易，继续尝试其他类型
+      }
+
+      // 尝试按地址搜索（余额）
+      try {
+        const balanceResponse = await api.wallets.getBalance(searchQuery);
+        setSearchResults({
+          type: 'address',
+          data: {
+            address: searchQuery,
+            balance: balanceResponse.data.balance
           }
-        }
-      }
-
-      // 尝试按交易ID查询
-      try {
-        const txResponse = await axios.get(`${API_URL}/transactions/${searchQuery}`);
-        setSearchResult({ type: 'transaction', data: txResponse.data });
-        setSearching(false);
+        });
+        setSearchLoading(false);
         return;
-      } catch (error) {
-        // 如果不是交易，可能是其他内容
-        if (error.response && error.response.status !== 404) {
-          throw error;
-        }
+      } catch (e) {
+        // 不是有效地址
       }
 
-      // 尝试按地址查询余额
-      try {
-        const balanceResponse = await axios.get(`${API_URL}/wallets/${searchQuery}/balance`);
-        setSearchResult({ type: 'address', data: { address: searchQuery, ...balanceResponse.data } });
-        setSearching(false);
-        return;
-      } catch (error) {
-        if (error.response && error.response.status !== 404) {
-          throw error;
-        }
-      }
-
-      // 如果都未找到
-      message.warning('未找到匹配的区块、交易或地址');
-      setSearching(false);
+      // 如果所有搜索都失败
+      setSearchResults({ type: 'not_found' });
+      message.info('未找到匹配结果');
     } catch (error) {
       console.error('搜索失败:', error);
-      message.error('搜索失败，请稍后再试');
-      setSearching(false);
+      message.error('搜索过程中发生错误');
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -171,10 +174,10 @@ const BlockExplorer = () => {
 
   // 渲染搜索结果
   const renderSearchResult = () => {
-    if (!searchResult) return null;
+    if (!searchResults) return null;
 
-    if (searchResult.type === 'block') {
-      const block = searchResult.data;
+    if (searchResults.type === 'block') {
+      const block = searchResults.data;
       return (
         <Card title={`区块详情 (高度: ${block.height})`} style={{ marginTop: 16 }}>
           <p><strong>哈希:</strong> {block.hash}</p>
@@ -193,8 +196,8 @@ const BlockExplorer = () => {
           </Collapse>
         </Card>
       );
-    } else if (searchResult.type === 'transaction') {
-      const tx = searchResult.data;
+    } else if (searchResults.type === 'transaction') {
+      const tx = searchResults.data;
       return (
         <Card title="交易详情" style={{ marginTop: 16 }}>
           <p><strong>交易ID:</strong> {tx.id}</p>
@@ -214,12 +217,16 @@ const BlockExplorer = () => {
           </Collapse>
         </Card>
       );
-    } else if (searchResult.type === 'address') {
+    } else if (searchResults.type === 'address') {
       return (
         <Card title="地址详情" style={{ marginTop: 16 }}>
-          <p><strong>地址:</strong> {searchResult.data.address}</p>
-          <p><strong>余额:</strong> {searchResult.data.balance}</p>
+          <p><strong>地址:</strong> {searchResults.data.address}</p>
+          <p><strong>余额:</strong> {searchResults.data.balance}</p>
         </Card>
+      );
+    } else if (searchResults.type === 'not_found') {
+      return (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到匹配结果" />
       );
     }
     
@@ -245,7 +252,7 @@ const BlockExplorer = () => {
           enterButton={
             <Button 
               icon={<SearchOutlined />} 
-              loading={searching}
+              loading={searchLoading}
               type="primary"
             >
               搜索
